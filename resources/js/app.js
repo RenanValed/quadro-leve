@@ -803,7 +803,7 @@
   // Tema é preferência do usuário (não do quadro). Itens existentes não mudam: só a tinta padrão das ferramentas.
   function applyTheme(t, persist) {
     const dark = t === 'dark';
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.body.classList.toggle('theme-dark', dark); // classe no body: o host da prévia pode escrever no <html>
     if (R.dark !== dark) {
       const from = dark ? INK_LIGHT : INK_DARK,
         to = dark ? INK_DARK : INK_LIGHT;

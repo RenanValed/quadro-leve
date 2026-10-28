@@ -372,26 +372,58 @@ const strokeN = () => ev('__ql.doc.items.at(-1).n');
 const setLevel = (l) => ev(`document.querySelector('[data-act=st-${l}]').click()`);
 await ev("__ql.doc.background='white'; QL.R.view.tx += 20000; QL.R.redrawNow()"); // área vazia, sem outros itens sob o traço
 await key('p');
-// H: a prévia ao vivo usa a mesma geometria (outline) do traço final
-const arc = [];
-for (let i = 0; i < 30; i++) {
-  const t = i / 29;
-  arc.push(P(300 + t * 360, 520 - Math.sin(t * Math.PI) * 90));
+// H: o traço consolidado é exatamente o buffer desenhado ao vivo (caneta com pressão variando, curva em S de 60 pontos)
+const penEv = (type, q, f) =>
+  send('Input.dispatchMouseEvent', {
+    type,
+    x: q[0],
+    y: q[1],
+    button: 'left',
+    buttons: type === 'mouseReleased' ? 0 : 1,
+    clickCount: 1,
+    pointerType: 'pen',
+    force: f,
+  });
+let regionY = 260;
+for (const level of ['off', 'high']) {
+  await setLevel(level);
+  const cy = regionY + 70,
+    pts60 = [];
+  for (let i = 0; i < 60; i++) {
+    const t = i / 59;
+    pts60.push([
+      P(300 + t * 360, cy + Math.sin(t * Math.PI * 2) * 55),
+      0.2 + 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI)),
+    ]);
+  }
+  await ev(
+    'window.__outl=0; window.__o0=QL.outline; QL.outline=(...a)=>{ window.__outl++; return window.__o0(...a); }'
+  );
+  await penEv('mouseMoved', pts60[0][0], 0);
+  await penEv('mousePressed', pts60[0][0], pts60[0][1]);
+  for (const q of pts60.slice(1)) await penEv('mouseMoved', q[0], q[1]);
+  const spy = await ev(
+    `(()=>{ const d=QL.R.live.getContext('2d').getImageData(280,${regionY},420,150).data; window.__liveA=Uint8Array.from({length:420*150},(_,i)=>d[i*4+3]); return window.__outl; })()`
+  );
+  await penEv('mouseReleased', pts60.at(-1)[0], pts60.at(-1)[1]);
+  await sleep(80);
+  const cmp = await ev(
+    `(()=>{ QL.outline=window.__o0; const s=QL.R.sctx.getImageData(280,${regionY},420,150).data; let bad=0, ink=0; for (let i=0;i<420*150;i++){ const li=255-window.__liveA[i]*(255-26)/255; if (Math.abs(li-s[i*4])>24) bad++; if (s[i*4]<200) ink++; } const st=QL.S.lastStroke; return {bad, ratio:+(bad/63000).toFixed(5), ink, buffered:st.buffered, kept:st.kept, itemN:__ql.doc.items.at(-1).n}; })()`
+  );
+  check(`nível ${level}: prévia ao vivo usa outline a cada movimento (spy)`, spy >= 50, spy);
+  check(
+    `nível ${level}: traço ao vivo = consolidado (< 0,2% dos pixels, pressão variável)`,
+    cmp.ink > 300 && cmp.ratio < 0.002,
+    cmp
+  );
+  if (level === 'off')
+    check(
+      'correção desativada: o item final tem todos os pontos do buffer',
+      cmp.itemN === cmp.buffered && cmp.kept === cmp.buffered,
+      cmp
+    );
+  regionY += 160;
 }
-await ev('window.__outl=0; window.__o0=QL.outline; QL.outline=(...a)=>{ window.__outl++; return window.__o0(...a); }');
-await mouse('mouseMoved', arc[0][0], arc[0][1], { buttons: 0 });
-await mouse('mousePressed', arc[0][0], arc[0][1]);
-for (const q of arc.slice(1)) await mouse('mouseMoved', q[0], q[1]);
-const spy = await ev(
-  `(()=>{ const d=QL.R.live.getContext('2d').getImageData(280,400,420,150).data; window.__liveA=Uint8Array.from({length:420*150},(_,i)=>d[i*4+3]); return window.__outl; })()`
-);
-await mouse('mouseReleased', arc.at(-1)[0], arc.at(-1)[1]);
-await sleep(80);
-const cmp = await ev(
-  `(()=>{ QL.outline=window.__o0; const s=QL.R.sctx.getImageData(280,400,420,150).data; let bad=0, ink=0; for (let i=0;i<420*150;i++){ const li=255-window.__liveA[i]*(255-26)/255; if (Math.abs(li-s[i*4])>40) bad++; if (s[i*4]<200) ink++; } return {bad, ratio:+(bad/63000).toFixed(4), ink}; })()`
-);
-check('prévia ao vivo usa outline a cada movimento (spy)', spy >= 29, spy);
-check('traço ao vivo = traço consolidado (< 2% dos pixels diferem)', cmp.ink > 300 && cmp.ratio < 0.02, cmp);
 // D: parado por 1 s vira reta (nível médio, o padrão)
 const bent = [P(300, 300), P(350, 350), P(400, 300)];
 await mouse('mouseMoved', bent[0][0], bent[0][1], { buttons: 0 });
@@ -439,15 +471,33 @@ const exportCorner = () =>
   ev(
     `QL.R.exportPNG(__ql.doc).then(async r=>{ const b=await createImageBitmap(r.blob), c=document.createElement('canvas'); c.width=b.width; c.height=b.height; const x=c.getContext('2d'); x.drawImage(b,0,0); return Array.from(x.getImageData(2,2,1,1).data.slice(0,3)); })`
   );
+// host hostil (prévia em iframe): escreve data-theme / color-scheme no <html> e uma cor escura no body
+await ev(
+  "document.documentElement.dataset.theme='light'; document.documentElement.style.colorScheme='light'; document.body.style.color='#111'"
+);
+const lum = (expr) =>
+  ev(`(()=>{ const m=(${expr}).match(/[\\d.]+/g).map(Number); return (0.299*m[0]+0.587*m[1]+0.114*m[2])/255; })()`);
+const lumReport = async () => ({
+  status: await lum("getComputedStyle(document.getElementById('status')).color"),
+  menu: await lum("getComputedStyle(document.querySelector('#topbar .mbtn')).color"),
+  tool: await lum("getComputedStyle(document.querySelector('.tool.active svg')).stroke"),
+  side: await lum("getComputedStyle(document.getElementById('side')).backgroundColor"),
+});
 await ev("document.querySelector('[data-act=theme-dark]').click()");
 await sleep(150);
 const dk = await ev(
-  "({t:document.documentElement.dataset.theme, pen:QL.S.slots[0].color, txt:QL.S.text.color, ls:localStorage.getItem('ql.theme')})"
+  "({t:document.body.classList.contains('theme-dark'), pen:QL.S.slots[0].color, txt:QL.S.text.color, ls:localStorage.getItem('ql.theme')})"
 );
 check(
-  'tema escuro: data-theme, tinta padrão e preferência gravada',
-  dk.t === 'dark' && dk.pen === '#f2f2f2' && dk.txt === '#f2f2f2' && dk.ls === 'dark',
+  'tema escuro: classe no body, tinta padrão e preferência gravada',
+  dk.t === true && dk.pen === '#f2f2f2' && dk.txt === '#f2f2f2' && dk.ls === 'dark',
   dk
+);
+const hostile = await lumReport();
+check(
+  'tema escuro com host hostil: texto e ícones claros, painel escuro',
+  hostile.status > 0.6 && hostile.menu > 0.6 && hostile.tool > 0.6 && hostile.side < 0.2,
+  hostile
 );
 const cd = await exportCorner();
 check(
@@ -456,12 +506,21 @@ check(
   cd
 );
 await ev("document.querySelector('[data-act=theme-light]').click()");
+await ev(
+  "document.documentElement.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; document.body.style.color='#eee'"
+);
 await sleep(150);
 const cl = await exportCorner();
 check(
   'tema claro de volta: tinta e fundo da exportação',
   (await ev('QL.S.slots[0].color')) === '#1a1a1a' && cl.every((v) => v >= 250),
   cl
+);
+const light = await lumReport();
+check(
+  'tema claro com host escuro: o app continua claro (side > 0.8, texto escuro)',
+  light.side > 0.8 && light.status < 0.5 && light.menu < 0.4,
+  light
 );
 
 // ---- arquivo por argumento (função pura) ----

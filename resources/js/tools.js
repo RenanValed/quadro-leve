@@ -622,9 +622,6 @@
         break;
       case 'pen':
       case 'hl':
-        G = g;
-        if (e.type === 'pointerup') strokePoint(e, true);
-        G = null;
         endStroke(g);
         break;
       case 'eraser':
@@ -844,13 +841,12 @@
   // Correção do traço (menu Exibir): UMA tabela concentra os efeitos
   //  holdMs  - parado por esse tempo, o traço em andamento vira reta (null = nunca)
   //  snapTol - ao soltar, desvio máximo / corda abaixo disso vira reta de 2 pontos (null = nunca)
-  //  rdpEps  - simplificação ao fechar o traço (no máximo 0,5 para não tirar curvas visíveis)
   //  alpha   - filtro exponencial da entrada, antes de ir para o buffer (1 = sem filtro)
   const STRAIGHTEN = {
-    off: { holdMs: null, snapTol: null, rdpEps: 0.35, alpha: 1 },
-    low: { holdMs: 1500, snapTol: 0.02, rdpEps: 0.35, alpha: 0.75 },
-    mid: { holdMs: 1000, snapTol: 0.04, rdpEps: 0.5, alpha: 0.6 },
-    high: { holdMs: 600, snapTol: 0.07, rdpEps: 0.5, alpha: 0.45 },
+    off: { holdMs: null, snapTol: null, alpha: 1 },
+    low: { holdMs: 1500, snapTol: 0.02, alpha: 0.75 },
+    mid: { holdMs: 1000, snapTol: 0.04, alpha: 0.6 },
+    high: { holdMs: 600, snapTol: 0.07, alpha: 0.45 },
   };
   T.setStraighten = (level) => {
     if (level in STRAIGHTEN) S.straighten = level;
@@ -866,7 +862,6 @@
     G.fx = G.fy = NaN; // posição filtrada (px de tela)
     G.fp = 0.5; // pressão filtrada
     G.px = G.py = NaN; // último ponto guardado
-    G.pr = 0.5; // última pressão bruta
     G.sp = 0.5; // largura por velocidade (pressão constante)
     G.const = true; // pressão sempre 0,5 (mouse ou caneta sem Windows Ink)
     G.timer = 0;
@@ -876,10 +871,10 @@
     R.clearLive();
     R.live.style.opacity = mode === 'hl' ? '0.35' : '';
     S.strokeActive = true;
-    strokePoint(e, false, true);
+    strokePoint(e, true);
   }
   // Entra um ponto: filtra, guarda no buffer (o que está na tela é o que será salvo) e redesenha o traço ao vivo.
-  function strokePoint(e, isUp, first) {
+  function strokePoint(e, first) {
     const g = G;
     if (!g || !g.buf) return;
     g.shift = e.shiftKey;
@@ -890,18 +885,17 @@
     const rx = e.clientX - R.rect.left,
       ry = e.clientY - R.rect.top;
     let p = e.pressure;
-    if (isUp || !(p > 0)) p = isUp ? g.pr : p || 0.5;
-    const k = first || isUp ? 1 : strokeCfg().alpha, // o ponto inicial e o final entram sem filtro
+    if (!(p > 0)) p = 0.5;
+    const k = first ? 1 : strokeCfg().alpha, // o ponto inicial entra sem filtro
       x = first ? rx : g.fx + (rx - g.fx) * k,
       y = first ? ry : g.fy + (ry - g.fy) * k,
       fp = first ? p : g.fp + (p - g.fp) * k;
     g.fx = x;
     g.fy = y;
     g.fp = fp;
-    g.pr = p;
     if (!first) {
       const dd = Math.hypot(x - g.px, y - g.py);
-      if (isUp ? dd < 0.3 : dd < 0.7) return;
+      if (dd < 0.7) return;
     }
     if (Math.abs(p - 0.5) > 0.0005) g.const = false;
     let lp = fp;
@@ -1006,6 +1000,16 @@
     for (let i = 1; i < n - 1; i++) dev = Math.max(dev, QL.distSeg(a[i * 3], a[i * 3 + 1], sx, sy, ex, ey));
     return dev < tol * len;
   }
+  // única limpeza ao fechar o traço: tira pontos consecutivos repetidos (< 0,05 de mundo)
+  function dedupePts(a, n) {
+    const out = [a[0], a[1], a[2]];
+    for (let i = 1; i < n; i++) {
+      const j = out.length - 3;
+      if (Math.hypot(a[i * 3] - out[j], a[i * 3 + 1] - out[j + 1]) >= 0.05)
+        out.push(a[i * 3], a[i * 3 + 1], a[i * 3 + 2]);
+    }
+    return Float32Array.from(out);
+  }
   function endStroke(g) {
     clearTimeout(g.timer);
     S.strokeActive = false;
@@ -1028,7 +1032,8 @@
       if (g.straight) pts = linePts(g.start, g.end, hl ? 0.5 : g.avgP);
       else if (cfg.snapTol != null && nearlyStraight(a, n, cfg.snapTol))
         pts = linePts([a[0], a[1]], [a[(n - 1) * 3], a[(n - 1) * 3 + 1]], hl ? 0.5 : avgPressure(a, n));
-      else pts = QL.rdp(a, n, cfg.rdpEps, g.size);
+      else pts = dedupePts(a, n); // sem RDP: o item é exatamente o buffer desenhado ao vivo
+      S.lastStroke = { buffered: n, kept: pts.length / 3 };
       const it = { id: QL.uuid(), type: 'stroke', kind: g.kind, color: g.color, size: g.size, pts, n: pts.length / 3 };
       R.liveActive = false;
       addItems([it]);

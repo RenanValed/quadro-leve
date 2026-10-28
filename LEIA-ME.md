@@ -67,7 +67,7 @@ Com a ferramenta Selecionar, clique num item e a barra de cima mostra o que dá 
 
 - **Tema claro ou escuro.** O escuro muda a interface e o fundo do quadro (preto, com grade ou pontos em cinza). É uma preferência sua, não do quadro: fica gravada no programa. Os itens que já existem não mudam; só a tinta padrão da caneta e do texto passa a ser clara no escuro.
 - **Fundo: nenhum, grade ou pontos.** Esse é guardado em cada quadro.
-- **Correção do traço: desativada, baixa, média ou alta (padrão: média).** Mexe em três coisas: o filtro que alisa o traço enquanto você desenha, o quanto o traço é simplificado ao soltar, e a regra de "virar reta". Segurar a caneta parada (1,5 s no baixo, 1 s no médio, 0,6 s no alto) transforma o traço em andamento numa reta até o ponteiro, e ela segue o ponteiro enquanto você não soltar (Shift trava em passos de 15°). Ao soltar, um traço que já era quase reto vira reta de dois pontos (só se tiver pelo menos 40 de comprimento, para não mexer em pontinhos e letras). Desativada: nada disso acontece.
+- **Correção do traço: desativada, baixa, média ou alta (padrão: média).** Mexe em duas coisas: o filtro que alisa o traço enquanto você desenha e a regra de "virar reta". O traço salvo é exatamente o que apareceu na tela enquanto você desenhava (nada é simplificado ao soltar). Segurar a caneta parada (1,5 s no baixo, 1 s no médio, 0,6 s no alto) transforma o traço em andamento numa reta até o ponteiro, e ela segue o ponteiro enquanto você não soltar (Shift trava em passos de 15°). Ao soltar, um traço que já era quase reto vira reta de dois pontos (só se tiver pelo menos 40 de comprimento, para não mexer em pontinhos e letras). Desativada: nada disso acontece.
 
 ## Texto e notas
 

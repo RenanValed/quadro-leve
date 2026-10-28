@@ -7,7 +7,7 @@
   'use strict';
 
   const QL = root.QL || {};
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.2.1';
   const SCHEMA = 1;
   const FORMAT = 'quadro-leve';
   const WORLD = 1000000; // limite do mundo (±)

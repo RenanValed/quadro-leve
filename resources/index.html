@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Quadro Leve</title>
     <style>
-      :root {
+      /* Tema por classe no body (nunca por atributo no <html>): o host de uma prévia pode escrever data-theme e
+         color-scheme no elemento raiz, então tudo aqui declara cor própria e não herda do host. */
+      body {
+        color-scheme: light;
         --bg: #f4f5f7;
         --panel: #ffffff;
         --line: #dfe2e7;
@@ -17,41 +20,70 @@
         --canvas: #ffffff;
         --ring: #dfe2e7;
         --edit-bg: rgba(255, 255, 255, 0.85);
+        --tip-bg: #222222;
+        --tip-fg: #ffffff;
+        --on-accent: #ffffff;
+        --accent-strong: #2468d6;
         --danger: #d93025;
         --radius: 8px;
         font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
         font-size: 14px;
         color: var(--fg);
       }
-      :root[data-theme='dark'] {
+      body.theme-dark {
+        color-scheme: dark;
         --bg: #16181c;
         --panel: #1f2227;
         --line: #343a42;
         --fg: #e6e8eb;
-        --muted: #9aa3ad;
-        --accent: #5b9bff;
+        --muted: #aab2bb;
+        --accent: #7db0ff;
         --accent-soft: #223a63;
         --hover: #2b3038;
         --canvas: #111111;
         --ring: #707884;
         --edit-bg: rgba(17, 17, 17, 0.85);
+        --tip-bg: #e6e8eb;
+        --tip-fg: #16181c;
+        --on-accent: #0b1b33;
+        --accent-strong: #a3c6ff;
       }
       * {
         box-sizing: border-box;
       }
-      html,
+      html {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
       body {
         margin: 0;
         height: 100%;
         overflow: hidden;
         background: var(--bg);
+        color: var(--fg);
         -webkit-user-select: none;
         user-select: none;
       }
-      button {
-        font: inherit;
+      button,
+      input,
+      select,
+      textarea {
         color: inherit;
+        font: inherit;
+      }
+      button {
         cursor: pointer;
+      }
+      /* cor própria em cada região (um color inline no body, vindo do host, não chega aqui) */
+      #side,
+      #topbar,
+      #ctxbar,
+      #status,
+      .mlist,
+      .card,
+      #pop {
+        color: var(--fg);
       }
       #app {
         display: grid;
@@ -222,8 +254,8 @@
         left: 46px;
         top: 50%;
         transform: translateY(-50%);
-        background: #222;
-        color: #fff;
+        background: var(--tip-bg);
+        color: var(--tip-fg);
         font-size: 12px;
         padding: 4px 8px;
         border-radius: 5px;
@@ -490,8 +522,8 @@
         left: 50%;
         bottom: 46px;
         transform: translateX(-50%);
-        background: #1f2328;
-        color: #fff;
+        background: var(--tip-bg);
+        color: var(--tip-fg);
         padding: 9px 16px;
         border-radius: 8px;
         opacity: 0;
@@ -551,10 +583,10 @@
       .btn.primary {
         background: var(--accent);
         border-color: var(--accent);
-        color: #fff;
+        color: var(--on-accent);
       }
       .btn.primary:hover {
-        background: #2468d6;
+        background: var(--accent-strong);
       }
       .card input[type='text'] {
         width: 100%;
