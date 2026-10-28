@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quadro Leve</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --panel: #ffffff;
+        --line: #dfe2e7;
+        --fg: #1f2328;
+        --muted: #6b7280;
+        --accent: #2f7df6;
+        --accent-soft: #e6f0ff;
+        --hover: #eef0f3;
+        --canvas: #ffffff;
+        --ring: #dfe2e7;
+        --edit-bg: rgba(255, 255, 255, 0.85);
+        --danger: #d93025;
+        --radius: 8px;
+        font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-size: 14px;
+        color: var(--fg);
+      }
+      :root[data-theme='dark'] {
+        --bg: #16181c;
+        --panel: #1f2227;
+        --line: #343a42;
+        --fg: #e6e8eb;
+        --muted: #9aa3ad;
+        --accent: #5b9bff;
+        --accent-soft: #223a63;
+        --hover: #2b3038;
+        --canvas: #111111;
+        --ring: #707884;
+        --edit-bg: rgba(17, 17, 17, 0.85);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      #app {
+        display: grid;
+        grid-template-rows: 40px auto minmax(0, 1fr) 26px;
+        grid-template-columns: 48px minmax(0, 1fr);
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+      /* topo */
+      #topbar {
+        grid-column: 1/3;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        position: relative;
+        z-index: 30;
+      }
+      #topbar .brand {
+        font-weight: 650;
+        margin-right: 8px;
+        letter-spacing: 0.2px;
+      }
+      .menu {
+        position: relative;
+      }
+      .mbtn {
+        border: 0;
+        background: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+      .mbtn:hover,
+      .menu.open > .mbtn {
+        background: var(--hover);
+      }
+      .mlist {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 230px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+        padding: 4px;
+        z-index: 40;
+      }
+      .menu.open > .mlist {
+        display: block;
+      }
+      .mi {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        width: 100%;
+        border: 0;
+        background: none;
+        text-align: left;
+        padding: 7px 10px 7px 26px;
+        border-radius: 6px;
+        position: relative;
+      }
+      .mi:hover {
+        background: var(--accent-soft);
+      }
+      .mi .k {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .mi.on::before {
+        content: '\2713';
+        position: absolute;
+        left: 8px;
+        color: var(--accent);
+      }
+      .msep {
+        height: 1px;
+        background: var(--line);
+        margin: 4px 2px;
+      }
+      #projName {
+        margin: 0 auto;
+        border: 0;
+        background: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        max-width: 40vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #projName:hover {
+        background: var(--hover);
+      }
+      .ibtn {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        background: none;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+      }
+      .ibtn:hover:not(:disabled) {
+        background: var(--hover);
+      }
+      .ibtn:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+      svg.i {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      /* lateral */
+      #side {
+        grid-row: 3;
+        grid-column: 1;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 0;
+        z-index: 20;
+        min-height: 0;
+        scrollbar-width: none;
+      }
+      #side::-webkit-scrollbar {
+        display: none;
+      }
+      #side .tool {
+        flex: none;
+      }
+      .tool {
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 8px;
+        background: none;
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+      .tool:hover {
+        background: var(--hover);
+      }
+      .tool.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .tool::after {
+        content: attr(data-tip);
+        position: absolute;
+        left: 46px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #222;
+        color: #fff;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 5px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.12s;
+        z-index: 50;
+      }
+      .tool:hover::after {
+        opacity: 1;
+        transition-delay: 0.35s;
+      }
+      /* palco */
+      #stage {
+        grid-row: 3;
+        grid-column: 2;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        contain: strict;
+        background: var(--canvas);
+        outline: none;
+      }
+      #stage canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+      }
+      #live {
+        pointer-events: none;
+      }
+      #editor {
+        position: absolute;
+        margin: 0;
+        resize: none;
+        overflow: hidden;
+        font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        outline: none;
+        z-index: 5;
+        border-radius: 0;
+        -webkit-user-select: text;
+        user-select: text;
+        line-height: 1.3;
+      }
+      #editor[hidden] {
+        display: none;
+      }
+      #editor.ed-note {
+        color: #2b2b2b;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.1);
+      }
+      #editor.ed-text {
+        background: var(--edit-bg);
+        padding: 0;
+        border: 1px dashed var(--accent);
+      }
+      #ctxbar {
+        grid-row: 2;
+        grid-column: 1/3;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        padding: 5px 10px;
+        z-index: 25;
+      }
+      #ctxbar:empty {
+        display: none;
+      }
+      #ctxbar .lab {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .lab.num {
+        min-width: 4.5ch;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .slot {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: 52px;
+        height: 34px;
+        border: 1px solid transparent;
+        background: none;
+        border-radius: 8px;
+        padding: 0 8px;
+        flex: none;
+      }
+      .dotbox {
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .slot.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .dot {
+        display: inline-block;
+        border-radius: 50%;
+        background: #000;
+        flex: none;
+      }
+      .sw {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--panel);
+        box-shadow: 0 0 0 1px var(--ring);
+        padding: 0;
+        flex: none;
+      }
+      .sw.on {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .sw.none {
+        background: linear-gradient(135deg, #fff 45%, #d93025 46%, #d93025 54%, #fff 55%);
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .chip.on {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      input[type='color'] {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: none;
+        cursor: pointer;
+      }
+      input[type='range'] {
+        width: 110px;
+        accent-color: var(--accent);
+      }
+      #pop {
+        position: absolute;
+        display: none;
+        z-index: 15;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+        padding: 10px;
+        gap: 8px;
+        flex-direction: column;
+        width: 230px;
+      }
+      #pop.open {
+        display: flex;
+      }
+      #pop .row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      #zoombox {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        display: flex;
+        align-items: center;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+      #zoombox button {
+        border: 0;
+        background: none;
+        height: 30px;
+        min-width: 30px;
+        padding: 0 6px;
+      }
+      #zoombox button:hover {
+        background: var(--hover);
+      }
+      #zoombox #zv {
+        min-width: 54px;
+        font-variant-numeric: tabular-nums;
+      }
+      /* status */
+      #status {
+        grid-column: 1/3;
+        grid-row: 4;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 12px;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      #status .sp {
+        flex: 1;
+      }
+      #status button {
+        border: 0;
+        background: none;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--fg);
+      }
+      #status button:hover {
+        background: var(--hover);
+      }
+      #hint {
+        color: #b25e00;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* faixa de erro, toast, modais */
+      #banner {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: var(--danger);
+        color: #fff;
+        padding: 9px 14px;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+      }
+      #banner.show {
+        display: flex;
+      }
+      #banner button {
+        background: #fff;
+        color: var(--danger);
+        border: 0;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-weight: 600;
+      }
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 46px;
+        transform: translateX(-50%);
+        background: #1f2328;
+        color: #fff;
+        padding: 9px 16px;
+        border-radius: 8px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 90;
+        max-width: 80vw;
+      }
+      #toast.show {
+        opacity: 0.96;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 24, 30, 0.42);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 80;
+      }
+      .overlay.show {
+        display: flex;
+      }
+      .card {
+        background: var(--panel);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        padding: 22px;
+        width: min(460px, 92vw);
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      .card p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .card .btns {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 8px 14px;
+      }
+      .btn:hover {
+        background: var(--hover);
+      }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .btn.primary:hover {
+        background: #2468d6;
+      }
+      .card input[type='text'] {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font: inherit;
+        background: var(--panel);
+        color: var(--fg);
+      }
+      #start .card {
+        width: min(620px, 94vw);
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+      }
+      #start .top {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      #start .top input {
+        flex: 1;
+      }
+      #recents {
+        overflow: auto;
+        border-top: 1px solid var(--line);
+        margin-top: 6px;
+      }
+      .rec {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        border: 0;
+        background: none;
+        text-align: left;
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+      }
+      .rec:hover {
+        background: var(--accent-soft);
+      }
+      .rec small {
+        color: var(--muted);
+      }
+      .empty {
+        color: var(--muted);
+        padding: 16px 6px;
+      }
+      .chip.b {
+        font-weight: 700;
+      }
+      .chip.i {
+        font-style: italic;
+      }
+      /* janela baixa: ferramentas menores e coluna que rola sem barra visível */
+      @media (max-height: 640px) {
+        #side {
+          overflow-y: auto;
+          gap: 2px;
+          padding: 6px 0;
+        }
+        .tool {
+          width: 36px;
+          height: 36px;
+        }
+      }
+      /* janela bem baixa: a barra de contexto vira uma linha com rolagem horizontal */
+      @media (max-height: 560px) {
+        #ctxbar {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: thin;
+        }
+        #ctxbar > * {
+          flex: none;
+        }
+      }
+      @media (max-width: 700px) {
+        #topbar .brand {
+          display: none;
+        }
+      }
+      @media (max-width: 600px) {
+        #hint,
+        #stRuntime,
+        #stCount {
+          display: none;
+        }
+        #status {
+          gap: 10px;
+        }
+        #projName {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="topbar">
+        <span class="brand">Quadro Leve</span>
+        <div class="menu">
+          <button class="mbtn">Arquivo</button>
+          <div class="mlist">
+            <button class="mi" data-act="new">Novo quadro<span class="k">Ctrl+N</span></button>
+            <button class="mi" data-act="open">Abrir arquivo…<span class="k">Ctrl+O</span></button>
+            <button class="mi" data-act="recents">Recentes…<span class="k"></span></button>
+            <div class="msep"></div>
+            <button class="mi" data-act="save">Salvar<span class="k">Ctrl+S</span></button>
+            <button class="mi" data-act="saveas">Salvar como…<span class="k">Ctrl+Shift+S</span></button>
+            <div class="msep"></div>
+            <button class="mi" data-act="image">Inserir imagem…<span class="k">ou Ctrl+V</span></button>
+            <button class="mi" data-act="export">Exportar PNG<span class="k">Ctrl+E</span></button>
+          </div>
+        </div>
+        <div class="menu">
+          <button class="mbtn">Exibir</button>
+          <div class="mlist">
+            <button class="mi" data-act="theme-light">Tema claro<span class="k"></span></button>
+            <button class="mi" data-act="theme-dark">Tema escuro<span class="k"></span></button>
+            <div class="msep"></div>
+            <button class="mi" data-act="bg-white">Fundo: nenhum<span class="k"></span></button>
+            <button class="mi" data-act="bg-grid">Fundo: grade<span class="k"></span></button>
+            <button class="mi" data-act="bg-dots">Fundo: pontos<span class="k"></span></button>
+            <div class="msep"></div>
+            <button class="mi" data-act="st-off">Correção do traço: desativada<span class="k"></span></button>
+            <button class="mi" data-act="st-low">Correção do traço: baixa<span class="k"></span></button>
+            <button class="mi" data-act="st-mid">Correção do traço: média<span class="k"></span></button>
+            <button class="mi" data-act="st-high">Correção do traço: alta<span class="k"></span></button>
+            <div class="msep"></div>
+            <button class="mi" data-act="zin">Aumentar zoom<span class="k">Ctrl +</span></button>
+            <button class="mi" data-act="zout">Diminuir zoom<span class="k">Ctrl −</span></button>
+            <button class="mi" data-act="z100">Zoom 100%<span class="k">Ctrl+1</span></button>
+            <button class="mi" data-act="fit">Ajustar à tela<span class="k">Ctrl+0</span></button>
+          </div>
+        </div>
+        <button id="projName" title="Renomear o quadro">Quadro sem título</button>
+        <button class="ibtn" id="bUndo" title="Desfazer (Ctrl+Z)" disabled>
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M9 14L4 9l5-5" />
+            <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+          </svg>
+        </button>
+        <button class="ibtn" id="bRedo" title="Refazer (Ctrl+Y)" disabled>
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M15 14l5-5-5-5" />
+            <path d="M20 9H10a6 6 0 0 0 0 12h3" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="ctxbar"></div>
+
+      <div id="side">
+        <button class="tool" data-tool="select" data-tip="Selecionar (V)">
+          <svg class="i" viewBox="0 0 24 24"><path d="M5 3l14 8-6 2 4 7-3 1.5-4-7-5 4z" /></svg>
+        </button>
+        <button class="tool" data-tool="pen" data-tip="Caneta (P)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M4 20l1-5L16 4l4 4L9 19z" />
+            <path d="M13.5 6.5l4 4" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="hl" data-tip="Marca-texto (H)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M9 11l4 4" />
+            <path d="M5 19l4-1 9-9-3-3-9 9z" />
+            <path d="M4 22h16" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="eraser" data-tip="Borracha de traço (E)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M4 16l9-9 6 6-5 5H8z" />
+            <path d="M10 10l6 6" />
+            <path d="M12 19h8" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="note" data-tip="Nota adesiva (N)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M4 4h16v11l-5 5H4z" />
+            <path d="M15 20v-5h5" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="text" data-tip="Texto (T)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M5 6V4h14v2" />
+            <path d="M12 4v16" />
+            <path d="M9 20h6" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="shape" data-tip="Formas (S)">
+          <svg class="i" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="11" height="11" rx="1" />
+            <circle cx="15" cy="15" r="6" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="link" data-tip="Conectar itens (L)">
+          <svg class="i" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="8" height="7" rx="1" />
+            <rect x="14" y="14" width="8" height="7" rx="1" />
+            <path d="M10 6.5h4a2 2 0 0 1 2 2V14" />
+            <path d="M14 12l2 2 2-2" />
+          </svg>
+        </button>
+        <button class="tool" data-tool="hand" data-tip="Mão / mover tela (Espaço)">
+          <svg class="i" viewBox="0 0 24 24">
+            <path d="M8 12V6a1.5 1.5 0 0 1 3 0v5" />
+            <path d="M11 11V4.5a1.5 1.5 0 0 1 3 0V11" />
+            <path d="M14 11V6a1.5 1.5 0 0 1 3 0v8c0 4-3 6-6 6-3 0-4-2-6-5l-1-2a1.5 1.5 0 0 1 2.5-1.5L8 14" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="stage" tabindex="-1">
+        <canvas id="static"></canvas>
+        <canvas id="live"></canvas>
+        <textarea id="editor" hidden spellcheck="false"></textarea>
+        <div id="pop"></div>
+        <div id="zoombox">
+          <button id="zOut" title="Diminuir zoom">−</button>
+          <button id="zv" title="Zoom 100% (Ctrl+1)">100%</button>
+          <button id="zIn" title="Aumentar zoom">+</button>
+          <button id="zFit" title="Ajustar à tela (Ctrl+0)">
+            <svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px">
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="status">
+        <button id="stName" title="Renomear">Quadro</button>
+        <span id="stSave">Não salvo</span>
+        <span id="stZoom">100%</span>
+        <span id="stCount">0 itens</span>
+        <span id="hint"></span>
+        <span class="sp"></span>
+        <span id="stRuntime"></span>
+      </div>
+    </div>
+
+    <div id="banner">
+      <span>Não foi possível salvar no disco — baixe uma cópia.</span><button id="bannerBtn">Baixar cópia</button>
+    </div>
+    <div id="toast"></div>
+    <div class="overlay" id="modal">
+      <div class="card">
+        <h2 id="mTitle"></h2>
+        <p id="mText"></p>
+        <input type="text" id="mInput" hidden />
+        <div class="btns" id="mBtns"></div>
+      </div>
+    </div>
+    <div class="overlay" id="start">
+      <div class="card">
+        <h2>Quadro Leve</h2>
+        <p>Um quadro branco simples e rápido. Escolha um quadro recente ou comece um novo.</p>
+        <div class="top">
+          <input type="text" id="newName" value="Quadro sem título" placeholder="Nome do quadro" /><button
+            class="btn primary"
+            id="startNew"
+          >
+            Novo quadro</button
+          ><button class="btn" id="startOpen">Abrir arquivo</button>
+        </div>
+        <div id="recents"></div>
+        <div class="btns"><button class="btn" id="startClose">Continuar no quadro atual</button></div>
+      </div>
+    </div>
+
+    <script src="js/neutralino.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/tools.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

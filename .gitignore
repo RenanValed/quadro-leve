@@ -1,0 +1,10 @@
+# Binários do Neutralino e builds (gerados por `neu update` e `scripts/empacotar.sh`)
+/bin
+/dist
+scripts/bin/makensis-mac-arm64
+# Lixo de sistema
+.DS_Store
+._*
+.storage
+*.log
+node_modules/

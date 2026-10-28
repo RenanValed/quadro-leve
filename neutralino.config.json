@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "br.ciarevit.quadroleve",
+  "version": "1.2.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/resources/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "logging": {"enabled": false, "writeToLogFile": false},
+  "nativeAllowList": ["app.*","os.*","filesystem.*","window.*","events.*","storage.*","debug.log"],
+  "modes": {
+    "window": {
+      "title": "Quadro Leve",
+      "width": 1280,
+      "height": 800,
+      "minWidth": 800,
+      "minHeight": 500,
+      "center": true,
+      "icon": "/resources/icons/appIcon.png",
+      "enableInspector": false,
+      "resizable": true,
+      "exitProcessOnClose": false
+    }
+  },
+  "cli": {
+    "binaryName": "QuadroLeve",
+    "resourcesPath": "/resources/",
+    "extensionsPath": "/extensions/",
+    "clientLibrary": "/resources/js/neutralino.js",
+    "binaryVersion": "6.10.0",
+    "clientVersion": "6.10.0"
+  }
+}
