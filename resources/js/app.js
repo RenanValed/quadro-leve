@@ -793,8 +793,16 @@
     markGroup('theme-', R.dark ? 'dark' : 'light');
     markGroup('bg-', doc && (doc.background === 'grid' || doc.background === 'dots') ? doc.background : 'white');
     markGroup('st-', S.straighten);
+    markGroup('hold-', S.holdLine ? 'on' : 'off');
+    markGroup('snap-', S.snapLine ? 'on' : 'off');
   }
   // Correção do traço é preferência do usuário (nível aplicado na hora)
+  // "reta ao segurar" (holdLine) e "endireitar ao soltar" (snapLine): portões booleanos, também preferência do usuário
+  function applyStrokeOption(name, on, persist) {
+    (name === 'holdLine' ? T.setHoldLine : T.setSnapLine)(on);
+    updateViewMenu();
+    if (persist) prefs.set(name, on ? '1' : '0');
+  }
   function applyStraighten(level, persist) {
     T.setStraighten(level);
     updateViewMenu();
@@ -868,6 +876,14 @@
       case 'st-mid':
       case 'st-high':
         applyStraighten(a.slice(3), true);
+        break;
+      case 'hold-on':
+      case 'hold-off':
+        applyStrokeOption('holdLine', a === 'hold-on', true);
+        break;
+      case 'snap-on':
+      case 'snap-off':
+        applyStrokeOption('snapLine', a === 'snap-on', true);
         break;
       case 'theme-light':
         applyTheme('light', true);
@@ -1256,6 +1272,10 @@
     const savedTheme = await prefs.load('theme');
     if (savedTheme && savedTheme !== (R.dark ? 'dark' : 'light')) applyTheme(savedTheme);
     applyStraighten((await prefs.load('straighten')) || S.straighten);
+    for (const name of ['holdLine', 'snapLine']) {
+      const v = await prefs.load(name);
+      if (v != null) applyStrokeOption(name, v === '1');
+    }
     bindUI();
     S.cb.tool(S.tool);
     setDocument(QL.newDoc(UNTITLED), null);

@@ -441,30 +441,58 @@ check(
   held.n === 2 && Math.abs(held.ex) < 1 && Math.abs(held.ey) < 1,
   held
 );
-// G: níveis de correção
+// G: regras do traço. Padrões de fábrica: reta ao segurar ligada, endireitar ao soltar desligado
 const zig = [];
 for (let i = 0; i <= 30; i++) zig.push(P(300 + i * 10, 600 + (i % 2 ? 2 : -2)));
-await setLevel('high');
+const click = (act) => ev(`document.querySelector('[data-act=${act}]').click()`);
+const holdBent = async (ms, end) => {
+  await mouse('mouseMoved', bent[0][0], bent[0][1], { buttons: 0 });
+  await mouse('mousePressed', bent[0][0], bent[0][1]);
+  for (const q of bent.slice(1)) await mouse('mouseMoved', q[0], q[1]);
+  await sleep(ms);
+  await mouse('mouseMoved', end[0], end[1]);
+  await mouse('mouseReleased', end[0], end[1]);
+  await sleep(80);
+  return strokeN();
+};
+await setLevel('mid'); // volta ao nível padrão (os testes de pixel acima usaram outros níveis)
+check(
+  'padrões de fábrica: ligado só o reta-ao-segurar',
+  await ev('QL.S.holdLine === true && QL.S.snapLine === false && QL.S.straighten === "mid"')
+);
 await drag(zig);
 await sleep(60);
-check('nível alto: traço quase reto vira 2 pontos ao soltar', (await strokeN()) === 2, await strokeN());
+const nDefault = await strokeN();
+check('padrão: traço quase reto mantém todos os pontos ao soltar', nDefault > 2, nDefault);
+check('padrão: segurar 1,1 s parado vira reta', (await holdBent(1100, P(500, 320))) === 2);
+await click('snap-on');
+await drag(zig);
+await sleep(60);
+check('endireitar ao soltar ligado: o mesmo traço vira 2 pontos', (await strokeN()) === 2, await strokeN());
+await click('snap-off');
+await click('hold-off');
+const nHoldOff = await holdBent(1250, P(450, 350));
+check('reta ao segurar desligada: segurar parado não vira reta', nHoldOff > 2, nHoldOff);
+await click('hold-on');
 await setLevel('off');
+await click('snap-on');
 await drag(zig);
 await sleep(60);
 const nOff = await strokeN();
-check('nível desativado: o mesmo traço mantém mais de 2 pontos', nOff > 2, nOff);
-await mouse('mouseMoved', bent[0][0], bent[0][1], { buttons: 0 });
-await mouse('mousePressed', bent[0][0], bent[0][1]);
-for (const q of bent.slice(1)) await mouse('mouseMoved', q[0], q[1]);
-await sleep(1250);
-await mouse('mouseMoved', P(450, 350)[0], P(450, 350)[1]);
-await mouse('mouseReleased', P(450, 350)[0], P(450, 350)[1]);
-await sleep(80);
-const nHeldOff = await strokeN();
-check('desativado: segurar parado não vira reta', nHeldOff > 2, nHeldOff);
+check('nível desativado: desliga tudo, o mesmo traço mantém mais de 2 pontos', nOff > 2, nOff);
+const nHeldOff = await holdBent(1250, P(450, 350));
+check('nível desativado: segurar parado não vira reta', nHeldOff > 2, nHeldOff);
+await click('snap-off');
 await setLevel('high');
+await click('snap-on');
+await click('hold-off');
 await ev("__ql.doc.background='grid'; QL.R.view.tx -= 20000; QL.R.redrawNow()");
-check('nível gravado em localStorage (ql.straighten)', (await ev("localStorage.getItem('ql.straighten')")) === 'high');
+check(
+  'preferências gravadas em localStorage',
+  (await ev(
+    "[localStorage.getItem('ql.straighten'), localStorage.getItem('ql.snapLine'), localStorage.getItem('ql.holdLine')].join()"
+  )) === 'high,1,0'
+);
 
 // ---- tema escuro ----
 const exportCorner = () =>
@@ -603,7 +631,10 @@ console.log('heap JS (MB) após estresse:', mem);
 // ---- a correção do traço persiste após recarregar ----
 await send('Page.reload');
 await sleep(1800);
-check('nível de correção persiste após recarregar', (await ev('QL.S.straighten')) === 'high');
+check(
+  'nível e as duas opções persistem após recarregar',
+  (await ev('[QL.S.straighten, QL.S.snapLine, QL.S.holdLine].join()')) === 'high,true,false'
+);
 check('sem erros no console durante o teste', errors.length === 0, errors);
 ws.close();
 ch.kill();

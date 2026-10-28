@@ -44,6 +44,8 @@
     penSeen: 0,
     penMouseMode: false,
     straighten: 'mid', // nível de correção do traço (menu Exibir)
+    holdLine: true, // reta ao segurar a caneta parada
+    snapLine: false, // endireitar traço quase reto ao soltar
     quiet: false,
     cb: {}, // cb: dirty, tool, sel, toast, status
   });
@@ -839,8 +841,8 @@
 
   /* ------------------------------ traço ----------------------------------- */
   // Correção do traço (menu Exibir): UMA tabela concentra os efeitos
-  //  holdMs  - parado por esse tempo, o traço em andamento vira reta (null = nunca)
-  //  snapTol - ao soltar, desvio máximo / corda abaixo disso vira reta de 2 pontos (null = nunca)
+  //  holdMs  - parado por esse tempo, o traço em andamento vira reta (vale se "reta ao segurar" estiver ligada)
+  //  snapTol - ao soltar, desvio máximo / corda abaixo disso vira reta de 2 pontos (vale se "endireitar" estiver ligado)
   //  alpha   - filtro exponencial da entrada, antes de ir para o buffer (1 = sem filtro)
   const STRAIGHTEN = {
     off: { holdMs: null, snapTol: null, alpha: 1 },
@@ -851,7 +853,15 @@
   T.setStraighten = (level) => {
     if (level in STRAIGHTEN) S.straighten = level;
   };
-  const strokeCfg = () => STRAIGHTEN[S.straighten];
+  T.setHoldLine = (on) => (S.holdLine = !!on);
+  T.setSnapLine = (on) => (S.snapLine = !!on);
+  // Regras do traço em uso: a tabela é a fonte dos números; "reta ao segurar" e "endireitar ao soltar" são portões
+  // por cima dela, e o nível "desativado" desliga toda correção (traço cru).
+  function strokeRules() {
+    const c = STRAIGHTEN[S.straighten];
+    if (S.straighten === 'off') return { alpha: 1, holdMs: null, snapTol: null };
+    return { alpha: c.alpha, holdMs: S.holdLine ? c.holdMs : null, snapTol: S.snapLine ? c.snapTol : null };
+  }
 
   function startStroke(e, mode) {
     const slot = S.slots[S.slot];
@@ -886,7 +896,7 @@
       ry = e.clientY - R.rect.top;
     let p = e.pressure;
     if (!(p > 0)) p = 0.5;
-    const k = first ? 1 : strokeCfg().alpha, // o ponto inicial entra sem filtro
+    const k = first ? 1 : strokeRules().alpha, // o ponto inicial entra sem filtro
       x = first ? rx : g.fx + (rx - g.fx) * k,
       y = first ? ry : g.fy + (ry - g.fy) * k,
       fp = first ? p : g.fp + (p - g.fp) * k;
@@ -938,7 +948,7 @@
   }
   // Traço que vira reta: parado pelo tempo do nível, o traço em andamento passa a ser uma reta do início até o ponteiro
   function armStraight(g, wx, wy) {
-    const hold = strokeCfg().holdMs;
+    const hold = strokeRules().holdMs;
     if (hold == null) return;
     if (g.timer && Math.hypot(wx - g.hx, wy - g.hy) < 3) return; // tremor (< 3 px de mundo): o relógio segue correndo
     clearTimeout(g.timer);
@@ -1017,7 +1027,7 @@
     R.live.style.opacity = '';
     if (n > 0) {
       const a = g.buf.a,
-        cfg = strokeCfg(),
+        rules = strokeRules(),
         hl = g.kind === 'hl';
       if (hl) for (let i = 0; i < n; i++) a[i * 3 + 2] = 0.5;
       else if (g.const && n >= 4) {
@@ -1030,7 +1040,7 @@
       }
       let pts;
       if (g.straight) pts = linePts(g.start, g.end, hl ? 0.5 : g.avgP);
-      else if (cfg.snapTol != null && nearlyStraight(a, n, cfg.snapTol))
+      else if (rules.snapTol != null && nearlyStraight(a, n, rules.snapTol))
         pts = linePts([a[0], a[1]], [a[(n - 1) * 3], a[(n - 1) * 3 + 1]], hl ? 0.5 : avgPressure(a, n));
       else pts = dedupePts(a, n); // sem RDP: o item é exatamente o buffer desenhado ao vivo
       S.lastStroke = { buffered: n, kept: pts.length / 3 };
